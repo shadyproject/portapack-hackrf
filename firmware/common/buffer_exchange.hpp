@@ -30,6 +30,7 @@
 class BufferExchange {
 public:
 	BufferExchange(CaptureConfig* const config);
+	BufferExchange(ReplayConfig* const config);
 	~BufferExchange();
 
 	BufferExchange(const BufferExchange&) = delete;
@@ -45,9 +46,17 @@ public:
 	StreamBuffer* get() {
 		return get(fifo_buffers_for_application);
 	}
+	
+	StreamBuffer* get_prefill() {
+		return get_prefill(fifo_buffers_for_application);
+	}
 
 	bool put(StreamBuffer* const p) {
 		return fifo_buffers_for_baseband->in(p);
+	}
+	
+	bool put_app(StreamBuffer* const p) {
+		return fifo_buffers_for_application->in(p);
 	}
 #endif
 
@@ -72,16 +81,21 @@ public:
 	}
 
 private:
-	CaptureConfig* const config;
+	//CaptureConfig* const config_capture;
+	//ReplayConfig* const config_replay;
 	FIFO<StreamBuffer*>* fifo_buffers_for_baseband { nullptr };
 	FIFO<StreamBuffer*>* fifo_buffers_for_application { nullptr };
 	Thread* thread { nullptr };
 	static BufferExchange* obj;
+	
+	enum {
+		CAPTURE,
+		REPLAY
+	} direction { };
 
 	void check_fifo_isr() {
-		if( !empty() ) {
+		if (!empty())
 			wakeup_isr();
-		}
 	}
 
 	void wakeup_isr() {
@@ -93,4 +107,6 @@ private:
 	}
 
 	StreamBuffer* get(FIFO<StreamBuffer*>* fifo);
+	
+	StreamBuffer* get_prefill(FIFO<StreamBuffer*>* fifo);
 };

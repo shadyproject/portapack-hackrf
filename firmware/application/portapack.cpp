@@ -30,6 +30,7 @@
 using namespace hackrf::one;
 
 #include "clock_manager.hpp"
+#include "event_m0.hpp"
 
 #include "backlight.hpp"
 #include "touch_adc.hpp"
@@ -77,8 +78,37 @@ WM8731 audio_codec_wm8731 { i2c0, 0x1a };
 AK4951 audio_codec_ak4951 { i2c0, 0x12 };
 
 ReceiverModel receiver_model;
+TransmitterModel transmitter_model;
 
 TemperatureLogger temperature_logger;
+
+bool antenna_bias { false };
+bool prev_clkin_status { false };
+uint8_t bl_tick_counter { 0 };
+
+void set_antenna_bias(const bool v) {
+	antenna_bias = v;
+}
+
+bool get_antenna_bias() {
+	return antenna_bias;
+}
+
+bool get_ext_clock() {
+	return prev_clkin_status;
+}
+
+void poll_ext_clock() {
+	auto clkin_status = clock_generator.clkin_status();
+	
+	if (clkin_status != prev_clkin_status) {
+		prev_clkin_status = clkin_status;
+		StatusRefreshMessage message { };
+		EventDispatcher::send_message(message);
+		clock_manager.init(clkin_status);
+	}
+	
+}
 
 class Power {
 public:
@@ -266,7 +296,7 @@ bool init() {
 	led_rx.setup();
 	led_tx.setup();
 
-	clock_manager.init();
+	clock_manager.init(false);
 	clock_manager.set_reference_ppb(persistent_memory::correction_ppb());
 	clock_manager.run_at_full_speed();
 

@@ -27,14 +27,31 @@ using namespace portapack;
 #include "io_file.hpp"
 #include "io_wave.hpp"
 
+#include "baseband_api.hpp"
 #include "rtc_time.hpp"
-
 #include "string_format.hpp"
 #include "utility.hpp"
 
 #include <cstdint>
 
 namespace ui {
+
+/*void RecordView::toggle_pitch_rssi() {
+	pitch_rssi_enabled = !pitch_rssi_enabled;
+	
+	// Send to RSSI widget
+	const PitchRSSIConfigureMessage message {
+		pitch_rssi_enabled,
+		0
+	};
+	shared_memory.application_queue.push(message);
+	
+	if( !pitch_rssi_enabled ) {
+		button_pitch_rssi.set_foreground(Color::orange());
+	} else {
+		button_pitch_rssi.set_foreground(Color::green());
+	}
+}*/
 
 RecordView::RecordView(
 	const Rect parent_rect,
@@ -50,13 +67,18 @@ RecordView::RecordView(
 {
 	add_children({
 		&rect_background,
+		//&button_pitch_rssi,
 		&button_record,
 		&text_record_filename,
 		&text_record_dropped,
 		&text_time_available,
 	});
-
+	
 	rect_background.set_parent_rect({ { 0, 0 }, size() });
+	
+	/*button_pitch_rssi.on_select = [this](ImageButton&) {
+		this->toggle_pitch_rssi();
+	};*/
 
 	button_record.on_select = [this](ImageButton&) {
 		this->toggle();
@@ -78,7 +100,9 @@ void RecordView::focus() {
 void RecordView::set_sampling_rate(const size_t new_sampling_rate) {
 	if( new_sampling_rate != sampling_rate ) {
 		stop();
+		
 		sampling_rate = new_sampling_rate;
+		baseband::set_sample_rate(sampling_rate);
 
 		button_record.hidden(sampling_rate == 0);
 		text_record_filename.hidden(sampling_rate == 0);
@@ -122,7 +146,11 @@ void RecordView::start() {
 	case FileType::WAV:
 		{
 			auto p = std::make_unique<WAVFileWriter>();
-			auto create_error = p->create(base_path.replace_extension(u".WAV"), sampling_rate);
+			auto create_error = p->create(
+				base_path.replace_extension(u".WAV"),
+				sampling_rate,
+				to_string_dec_uint(receiver_model.tuning_frequency()) + "Hz"
+			);
 			if( create_error.is_valid() ) {
 				handle_error(create_error.value());
 			} else {
@@ -188,7 +216,7 @@ Optional<File::Error> RecordView::write_metadata_file(const std::filesystem::pat
 	if( create_error.is_valid() ) {
 		return create_error;
 	} else {
-		const auto error_line1 = file.write_line("sample_rate=" + to_string_dec_uint(sampling_rate));
+		const auto error_line1 = file.write_line("sample_rate=" + to_string_dec_uint(sampling_rate / 8));
 		if( error_line1.is_valid() ) {
 			return error_line1;
 		}
@@ -210,10 +238,14 @@ void RecordView::update_status_display() {
 		const auto s = to_string_dec_uint(dropped_percent, 2, ' ') + "\%";
 		text_record_dropped.set(s);
 	}
+	
+	/*if (pitch_rssi_enabled) {
+		button_pitch_rssi.invert_colors();
+	}*/
 
 	if( sampling_rate ) {
 		const auto space_info = std::filesystem::space(u"");
-		const uint32_t bytes_per_second = file_type == FileType::WAV ? (sampling_rate * 2) : (sampling_rate * 4);
+		const uint32_t bytes_per_second = file_type == FileType::WAV ? (sampling_rate * 2) : (sampling_rate / 8 * 4);
 		const uint32_t available_seconds = space_info.free / bytes_per_second;
 		const uint32_t seconds = available_seconds % 60;
 		const uint32_t available_minutes = available_seconds / 60;

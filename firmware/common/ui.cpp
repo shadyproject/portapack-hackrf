@@ -20,10 +20,31 @@
  */
 
 #include "ui.hpp"
+#include "sine_table.hpp"
 
 #include <algorithm>
 
 namespace ui {
+
+// CGA palette
+Color term_colors[16] = {
+	Color::black(),
+	Color::dark_blue(),
+	Color::dark_green(),
+	Color::dark_cyan(),
+	Color::dark_red(),
+	Color::dark_magenta(),
+	Color::dark_yellow(),
+	Color::light_grey(),
+	Color::dark_grey(),
+	Color::blue(),
+	Color::green(),
+	Color::cyan(),
+	Color::red(),
+	Color::magenta(),
+	Color::yellow(),
+	Color::white()
+};
 
 bool Rect::contains(const Point p) const {
 	return (p.x() >= left()) && (p.y() >= top()) &&
@@ -67,6 +88,10 @@ Rect& Rect::operator+=(const Point& p) {
 Rect& Rect::operator-=(const Point& p) {
 	_pos -= p;
 	return *this;
+}
+
+Point polar_to_point(float angle, uint32_t distance) {
+	return Point(sin_f32(DEG_TO_RAD(angle) + (pi / 2)) * distance, -sin_f32(DEG_TO_RAD(angle)) * distance);
 }
 
 } /* namespace ui */

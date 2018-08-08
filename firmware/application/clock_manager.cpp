@@ -247,10 +247,10 @@ constexpr ClockControls si5351_clock_control_clkin {
 	si5351_clock_control_common[4] | si5351_clock_control_ms_src_clkin,
 	si5351_clock_control_common[5] | si5351_clock_control_ms_src_clkin,
 	si5351_clock_control_common[6] | si5351_clock_control_ms_src_clkin,
-	si5351_clock_control_common[7] | si5351_clock_control_ms_src_clkin,
+	si5351_clock_control_common[7] | si5351_clock_control_ms_src_xtal,
 };
 
-void ClockManager::init() {
+void ClockManager::init(const bool use_clkin) {
 	/* Must be sure to run the M4 core from IRC when messing with the signal
 	 * generator that sources the GP_CLKIN signal that drives the micro-
 	 * controller's PLL1 input.
@@ -277,7 +277,7 @@ void ClockManager::init() {
 		set_gp_clkin_to_clkin_direct();
 		start_frequency_monitor_measurement(cgu::CLK_SEL::GP_CLKIN);
 		wait_For_frequency_monitor_measurement_done();
-		const auto clkin_frequency = get_frequency_monitor_measurement_in_hertz();
+	//const bool use_clkin = false;
 
 		// CLKIN is required to be 10MHz. FREQ_MON measurement is accurate to 1.5%
 		// due to LPC43xx IRC oscillator precision.

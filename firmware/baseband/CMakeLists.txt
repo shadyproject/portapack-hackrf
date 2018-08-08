@@ -1,5 +1,6 @@
 #
 # Copyright (C) 2014 Jared Boone, ShareBrained Technology, Inc.
+# Copyright (C) 2016 Furrtek
 #
 # This file is part of PortaPack.
 #
@@ -112,9 +113,11 @@ set(CPPSRC
 	baseband_stats_collector.cpp
 	dsp_decimate.cpp
 	dsp_demodulate.cpp
+	dsp_goertzel.cpp
 	matched_filter.cpp
 	spectrum_collector.cpp
 	stream_input.cpp
+	stream_output.cpp
 	dsp_squelch.cpp
 	clock_recovery.cpp
 	packet_builder.cpp
@@ -127,12 +130,14 @@ set(CPPSRC
 	rssi_thread.cpp
 	audio_compressor.cpp
 	audio_output.cpp
+	audio_input.cpp
 	audio_dma.cpp
 	audio_stats_collector.cpp
 	${COMMON}/utility.cpp
 	${COMMON}/chibios_cpp.cpp
 	${COMMON}/debug.cpp
 	${COMMON}/gcc.cpp
+	tone_gen.cpp
 )
 
 # C sources to be compiled in ARM mode regardless of the global setting.
@@ -272,6 +277,41 @@ macro(DeclareTargets chunk_tag name)
 	set(BASEBAND_IMAGES ${BASEBAND_IMAGES} ${PROJECT_NAME}.img)
 endmacro()
 
+### ACARS RX
+
+set(MODE_CPPSRC
+	proc_acars.cpp
+)
+DeclareTargets(PACA acars)
+
+### ADS-B RX
+
+set(MODE_CPPSRC
+	proc_adsbrx.cpp
+)
+DeclareTargets(PADR adsbrx)
+
+### ADS-B TX
+
+set(MODE_CPPSRC
+	proc_adsbtx.cpp
+)
+DeclareTargets(PADT adsbtx)
+
+### AFSK
+
+set(MODE_CPPSRC
+	proc_afsk.cpp
+)
+DeclareTargets(PAFT afsktx)
+
+### AFSK RX
+
+set(MODE_CPPSRC
+	proc_afskrx.cpp
+)
+DeclareTargets(PAFR afskrx)
+
 ### AIS
 
 set(MODE_CPPSRC
@@ -285,6 +325,13 @@ set(MODE_CPPSRC
 	proc_am_audio.cpp
 )
 DeclareTargets(PAMA am_audio)
+
+### Audio transmit
+
+set(MODE_CPPSRC
+	proc_audiotx.cpp
+)
+DeclareTargets(PATX audio_tx)
 
 ### Capture
 
@@ -300,12 +347,103 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PERT ert)
 
+### Radiosonde
+
+set(MODE_CPPSRC
+	proc_sonde.cpp
+)
+DeclareTargets(PSON sonde)
+
+### FSK TX
+
+set(MODE_CPPSRC
+	proc_fsk.cpp
+)
+DeclareTargets(PFSK fsktx)
+
+### Jammer
+
+set(MODE_CPPSRC
+	proc_jammer.cpp
+)
+DeclareTargets(PJAM jammer)
+
+### Microphone transmit
+
+set(MODE_CPPSRC
+	proc_mictx.cpp
+)
+DeclareTargets(PMTX mic_tx)
+
 ### NFM Audio
 
 set(MODE_CPPSRC
 	proc_nfm_audio.cpp
 )
 DeclareTargets(PNFM nfm_audio)
+
+### No op
+
+set(MODE_CPPSRC
+	proc_noop.cpp
+)
+DeclareTargets(PNOP no_operation)
+
+### OOK
+
+set(MODE_CPPSRC
+	proc_ook.cpp
+)
+DeclareTargets(POOK ook)
+
+### POCSAG RX
+
+set(MODE_CPPSRC
+	proc_pocsag.cpp
+)
+DeclareTargets(PPOC pocsag)
+
+### RDS
+
+set(MODE_CPPSRC
+	proc_rds.cpp
+)
+DeclareTargets(PRDS rds)
+
+### Replay
+
+set(MODE_CPPSRC
+	proc_replay.cpp
+)
+DeclareTargets(PREP replay)
+
+### Signal generator
+
+set(MODE_CPPSRC
+	proc_siggen.cpp
+)
+DeclareTargets(PSIG siggen)
+
+### SSTV TX
+
+set(MODE_CPPSRC
+	proc_sstvtx.cpp
+)
+DeclareTargets(PSTX sstvtx)
+
+### Test
+
+set(MODE_CPPSRC
+	proc_test.cpp
+)
+DeclareTargets(PTST test)
+
+### Tones
+
+set(MODE_CPPSRC
+	proc_tones.cpp
+)
+DeclareTargets(PTON tones)
 
 ### TPMS
 
@@ -314,19 +452,19 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PTPM tpms)
 
-### WFM Audio
-
-set(MODE_CPPSRC
-	proc_wfm_audio.cpp
-)
-DeclareTargets(PWFM wfm_audio)
-
 ### Wideband Spectrum
 
 set(MODE_CPPSRC
 	proc_wideband_spectrum.cpp
 )
 DeclareTargets(PSPE wideband_spectrum)
+
+### WFM Audio
+
+set(MODE_CPPSRC
+	proc_wfm_audio.cpp
+)
+DeclareTargets(PWFM wfm_audio)
 
 ### HackRF "factory" firmware
 
@@ -354,11 +492,12 @@ set(BASEBAND_IMAGES ${BASEBAND_IMAGES} terminator.img)
 #######################################################################
 
 project(baseband)
-
+	
 add_custom_command(
 	OUTPUT ${PROJECT_NAME}.img
 	COMMAND cat ${BASEBAND_IMAGES} > ${PROJECT_NAME}.img
 	DEPENDS ${BASEBAND_IMAGES}
+	DEPENDS hackrf.img terminator.img
 	VERBATIM
 )
 

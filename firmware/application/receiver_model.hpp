@@ -45,9 +45,8 @@ public:
 	rf::Frequency frequency_step() const;
 	void set_frequency_step(rf::Frequency f);
 
-	bool antenna_bias() const;
-	void set_antenna_bias(bool enabled);
-
+	void set_antenna_bias();
+	
 	bool rf_amp() const;
 	void set_rf_amp(bool enabled);
 
@@ -71,6 +70,9 @@ public:
 
 	volume_t headphone_volume() const;
 	void set_headphone_volume(volume_t v);
+	
+	uint8_t squelch_level() const;
+	void set_squelch_level(uint8_t v);
 
 	void enable();
 	void disable();
@@ -88,7 +90,6 @@ private:
 	rf::Frequency frequency_step_ { 25000 };
 	bool enabled_ { false };
 	bool rf_amp_ { false };
-	bool antenna_bias_ { false };
 	int32_t lna_gain_db_ { 32 };
 	uint32_t baseband_bandwidth_ { max2837::filter::bandwidth_minimum };
 	int32_t vga_gain_db_ { 32 };
@@ -99,6 +100,7 @@ private:
 	size_t nbfm_config_index = 0;
 	size_t wfm_config_index = 0;
 	volume_t headphone_volume_ { -43.0_dB };
+	uint8_t squelch_level_ { 80 };
 
 	int32_t tuning_offset();
 

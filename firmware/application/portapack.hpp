@@ -24,6 +24,7 @@
 #include "portapack_io.hpp"
 
 #include "receiver_model.hpp"
+#include "transmitter_model.hpp"
 
 #include "i2c_pp.hpp"
 #include "spi_pp.hpp"
@@ -48,8 +49,18 @@ extern si5351::Si5351 clock_generator;
 extern ClockManager clock_manager;
 
 extern ReceiverModel receiver_model;
+extern TransmitterModel transmitter_model;
+
+extern uint8_t bl_tick_counter;
+extern bool antenna_bias;
 
 extern TemperatureLogger temperature_logger;
+
+void set_antenna_bias(const bool v);
+bool get_antenna_bias();
+
+void poll_ext_clock();
+bool get_ext_clock();
 
 bool init();
 void shutdown();

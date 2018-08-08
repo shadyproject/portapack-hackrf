@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -30,6 +31,12 @@
 #include <cstdint>
 #include <cstddef>
 #include <array>
+
+void AudioOutput::configure(
+	const bool do_proc
+) {
+	do_processing = do_proc;
+}
 
 void AudioOutput::configure(
 	const iir_biquad_config_t& hpf_config,
@@ -69,21 +76,28 @@ void AudioOutput::write(
 void AudioOutput::on_block(
 	const buffer_f32_t& audio
 ) {
-	const auto audio_present_now = squelch.execute(audio);
+	if (do_processing) {
+		const auto audio_present_now = squelch.execute(audio);
 
-	hpf.execute_in_place(audio);
-	deemph.execute_in_place(audio);
+		hpf.execute_in_place(audio);
+		deemph.execute_in_place(audio);
 
-	audio_present_history = (audio_present_history << 1) | (audio_present_now ? 1 : 0);
-	const bool audio_present = (audio_present_history != 0);
-	
-	if( !audio_present ) {
-		for(size_t i=0; i<audio.count; i++) {
-			audio.p[i] = 0;
+		audio_present_history = (audio_present_history << 1) | (audio_present_now ? 1 : 0);
+		audio_present = (audio_present_history != 0);
+		
+		if( !audio_present ) {
+			for(size_t i=0; i<audio.count; i++) {
+				audio.p[i] = 0;
+			}
 		}
-	}
+	} else
+		audio_present = true;
 
 	fill_audio_buffer(audio, audio_present);
+}
+
+bool AudioOutput::is_squelched() {
+	return !audio_present;
 }
 
 void AudioOutput::fill_audio_buffer(const buffer_f32_t& audio, const bool send_to_fifo) {

@@ -36,6 +36,8 @@
 #include "hackrf_gpio.hpp"
 using namespace hackrf::one;
 
+#include "cpld_update.hpp"
+
 #include "portapack.hpp"
 
 namespace radio {
@@ -105,12 +107,31 @@ void init() {
 void set_direction(const rf::Direction new_direction) {
 	/* TODO: Refactor all the various "Direction" enumerations into one. */
 	/* TODO: Only make changes if direction changes, but beware of clock enabling. */
+	
+	// Hack to fix the CPLD (clocking ?) bug: toggle CPLD SRAM overlay depending on new direction
+	// Use CPLD's EEPROM config when transmitting
+	// Use the SRAM overlay when receiving
+	if (direction != new_direction) {
+		if (new_direction == rf::Direction::Transmit) {
+			hackrf::cpld::init_from_eeprom();
+		} else {
+			if( !hackrf::cpld::load_sram() ) {
+				chSysHalt();
+			}
+		}
+	}
+	
 	direction = new_direction;
-
+	
 	second_if.set_mode((direction == rf::Direction::Transmit) ? max2837::Mode::Transmit : max2837::Mode::Receive);
 	rf_path.set_direction(direction);
 
 	baseband_codec.set_mode((direction == rf::Direction::Transmit) ? max5864::Mode::Transmit : max5864::Mode::Receive);
+
+	if (direction == rf::Direction::Receive)
+		led_rx.on();
+	else
+		led_tx.on();
 }
 
 bool set_tuning_frequency(const rf::Frequency frequency) {
@@ -136,6 +157,13 @@ bool set_tuning_frequency(const rf::Frequency frequency) {
 
 void set_rf_amp(const bool rf_amp) {
 	rf_path.set_rf_amp(rf_amp);
+	
+	if (direction == rf::Direction::Transmit) {
+		if (rf_amp)
+			led_tx.on();
+		else
+			led_tx.off();
+	}
 }
 
 void set_lna_gain(const int_fast8_t db) {
@@ -169,6 +197,9 @@ void disable() {
 	second_if.set_mode(max2837::Mode::Standby);
 	first_if.disable();
 	set_rf_amp(false);
+	
+	led_rx.off();
+	led_tx.off();
 }
 
 void enable(Configuration configuration) {

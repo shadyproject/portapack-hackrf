@@ -32,7 +32,7 @@ Style Style::invert() const {
 	return {
 		.font = font,
 		.background = foreground,
-		.foreground = background,
+		.foreground = background
 	};
 }
 
@@ -42,16 +42,37 @@ int Painter::draw_char(const Point p, const Style& style, const char c) {
 	return glyph.advance().x();
 }
 
-int Painter::draw_string(Point p, const Style& style, const std::string text) {
+int Painter::draw_string(Point p, const Font& font, const Color foreground,
+	const Color background, const std::string text) {
+	
+	bool escape = false;
 	size_t width = 0;
+	Color pen = foreground;
+	
 	for(const auto c : text) {
-		const auto glyph = style.font.glyph(c);
-		display.draw_glyph(p, glyph, style.foreground, style.background);
-		const auto advance = glyph.advance();
-		p += advance;
-		width += advance.x();
+		if (escape) {
+			if (c <= 15)
+				pen = term_colors[c & 15];
+			else
+				pen = foreground;
+			escape = false;
+		} else {
+			if (c == '\x1B') {
+				escape = true;
+			} else {
+				const auto glyph = font.glyph(c);
+				display.draw_glyph(p, glyph, pen, background);
+				const auto advance = glyph.advance();
+				p += advance;
+				width += advance.x();
+			}
+		}
 	}
 	return width;
+}
+
+int Painter::draw_string(Point p, const Style& style, const std::string text) {
+	return draw_string(p, style.font, style.foreground, style.background, text);
 }
 
 void Painter::draw_bitmap(const Point p, const Bitmap& bitmap, const Color foreground, const Color background) {
@@ -75,6 +96,10 @@ void Painter::draw_rectangle(const Rect r, const Color c) {
 
 void Painter::fill_rectangle(const Rect r, const Color c) {
 	display.fill_rectangle(r, c);
+}
+
+void Painter::fill_rectangle_unrolled8(const Rect r, const Color c) {
+	display.fill_rectangle_unrolled8(r, c);
 }
 
 void Painter::paint_widget_tree(Widget* const w) {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -20,6 +21,7 @@
  */
 
 #include "lcd_ili9341.hpp"
+#include "bmp.hpp"
 
 #include "portapack_io.hpp"
 using namespace portapack;
@@ -27,6 +29,8 @@ using namespace portapack;
 #include "utility.hpp"
 
 #include "ch.h"
+
+#include <complex>
 
 namespace lcd {
 
@@ -290,6 +294,144 @@ void ILI9341::fill_rectangle(ui::Rect r, const ui::Color c) {
 		lcd_start_ram_write(r_clipped);
 		size_t count = r_clipped.width() * r_clipped.height();
 		io.lcd_write_pixels(c, count);
+	}
+}
+
+void ILI9341::fill_rectangle_unrolled8(ui::Rect r, const ui::Color c) {
+	const auto r_clipped = r.intersect(screen_rect());
+	if( !r_clipped.is_empty() ) {
+		lcd_start_ram_write(r_clipped);
+		size_t count = r_clipped.width() * r_clipped.height();
+		io.lcd_write_pixels_unrolled8(c, count);
+	}
+}
+
+void ILI9341::render_line(const ui::Point p, const uint8_t count, const ui::Color* line_buffer) {
+	lcd_start_ram_write(p, { count, 1 });
+	io.lcd_write_pixels(line_buffer, count);
+}
+
+void ILI9341::render_box(const ui::Point p, const ui::Size s, const ui::Color* line_buffer) {
+	lcd_start_ram_write(p, s);
+	io.lcd_write_pixels(line_buffer, s.width() * s.height());
+}
+
+// RLE_4 BMP loader (delta not implemented)
+void ILI9341::drawBMP(const ui::Point p, const uint8_t * bitmap, const bool transparency) {
+	const bmp_header_t * bmp_header = (const bmp_header_t *)bitmap;
+	uint32_t data_idx;
+	uint8_t by, c, count, transp_idx = 0;
+	ui::Color line_buffer[240];
+	uint16_t px = 0, py;
+	ui::Color palette[16];
+	
+	// Abort if bad depth or no RLE
+	if ((bmp_header->bpp != 4) ||
+		(bmp_header->compression != 2)) return;
+
+	data_idx = bmp_header->image_data;
+	const bmp_palette_t * bmp_palette = (const bmp_palette_t *)&bitmap[bmp_header->BIH_size + 14];
+	
+	// Convert palette and find pure magenta index (alpha color key)
+	for (c = 0; c < 16; c++) {
+		palette[c] = ui::Color(bmp_palette->color[c].R, bmp_palette->color[c].G, bmp_palette->color[c].B);
+		if ((bmp_palette->color[c].R == 0xFF) &&
+			(bmp_palette->color[c].G == 0x00) &&
+			(bmp_palette->color[c].B == 0xFF)) transp_idx = c;
+	}
+
+	if (!transparency) {
+		py = bmp_header->height + 16;
+		do {
+			by = bitmap[data_idx++];
+			if (by) {
+				count = by >> 1;
+				by = bitmap[data_idx++];
+				for (c = 0; c < count; c++) {
+					line_buffer[px++] = palette[by >> 4];
+					if (px < bmp_header->width) line_buffer[px++] = palette[by & 15];
+				}
+				if (data_idx & 1) data_idx++;
+			} else {
+				by = bitmap[data_idx++];
+				if (by == 0) {
+					render_line({p.x(), p.y() + py}, bmp_header->width, line_buffer);
+					py--;
+					px = 0;
+				} else if (by == 1) {
+					break;
+				} else if (by == 2) {
+					// Delta
+				} else {
+					count = by >> 1;
+					for (c = 0; c < count; c++) {
+						by = bitmap[data_idx++];
+						line_buffer[px++] = palette[by >> 4];
+						if (px < bmp_header->width) line_buffer[px++] = palette[by & 15];
+					}
+					if (data_idx & 1) data_idx++;
+				}
+			}
+		} while (1);
+	} else {
+		py = bmp_header->height;
+		do {
+			by = bitmap[data_idx++];
+			if (by) {
+				count = by >> 1;
+				by = bitmap[data_idx++];
+				for (c = 0; c < count; c++) {
+					if ((by >> 4) != transp_idx) draw_pixel({static_cast<ui::Coord>(p.x() + px), static_cast<ui::Coord>(p.y() + py)}, palette[by >> 4]);
+					px++;
+					if (px < bmp_header->width) {
+						if ((by & 15) != transp_idx) draw_pixel({static_cast<ui::Coord>(p.x() + px), static_cast<ui::Coord>(p.y() + py)}, palette[by & 15]);
+					}
+					px++;
+				}
+				if (data_idx & 1) data_idx++;
+			} else {
+				by = bitmap[data_idx++];
+				if (by == 0) {
+					py--;
+					px = 0;
+				} else if (by == 1) {
+					break;
+				} else if (by == 2) {
+					// Delta
+				} else {
+					count = by >> 1;
+					for (c = 0; c < count; c++) {
+						by = bitmap[data_idx++];
+						if ((by >> 4) != transp_idx) draw_pixel({static_cast<ui::Coord>(p.x() + px), static_cast<ui::Coord>(p.y() + py)}, palette[by >> 4]);
+						px++;
+						if (px < bmp_header->width) {
+							if ((by & 15) != transp_idx) draw_pixel({static_cast<ui::Coord>(p.x() + px), static_cast<ui::Coord>(p.y() + py)}, palette[by & 15]);
+						}
+						px++;
+					}
+					if (data_idx & 1) data_idx++;
+				}
+			}
+		} while (1);
+	}
+}
+
+void ILI9341::draw_line(const ui::Point start, const ui::Point end, const ui::Color color) {
+	int x0 = start.x();
+	int y0 = start.y();
+	int x1 = end.x();
+	int y1 = end.y();
+	
+	int dx = std::abs(x1-x0), sx = x0<x1 ? 1 : -1;
+	int dy = std::abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+	int err = (dx>dy ? dx : -dy)/2, e2;
+ 
+	for(;;){
+		draw_pixel({static_cast<ui::Coord>(x0), static_cast<ui::Coord>(y0)}, color);
+		if (x0==x1 && y0==y1) break;
+		e2 = err;
+		if (e2 >-dx) { err -= dy; x0 += sx; }
+		if (e2 < dy) { err += dx; y0 += sy; }
 	}
 }
 

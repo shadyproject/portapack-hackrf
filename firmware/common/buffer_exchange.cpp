@@ -25,11 +25,22 @@ BufferExchange* BufferExchange::obj { nullptr };
 
 BufferExchange::BufferExchange(
 	CaptureConfig* const config
-) : config { config }
+)	// : config_capture { config }
 {
 	obj = this;
+	// In capture mode, baseband wants empty buffers, app waits for full buffers
 	fifo_buffers_for_baseband = config->fifo_buffers_empty;
 	fifo_buffers_for_application = config->fifo_buffers_full;
+}
+
+BufferExchange::BufferExchange(
+	ReplayConfig* const config
+)	// : config_replay { config }
+{
+	obj = this;
+	// In replay mode, baseband wants full buffers, app waits for empty buffers
+	fifo_buffers_for_baseband = config->fifo_buffers_full;
+	fifo_buffers_for_application = config->fifo_buffers_empty;
 }
 
 BufferExchange::~BufferExchange() {
@@ -42,13 +53,22 @@ StreamBuffer* BufferExchange::get(FIFO<StreamBuffer*>* fifo) {
 	while(true) {
 		StreamBuffer* p { nullptr };
 		fifo->out(p);
+		
 		if( p ) {
 			return p;
 		}
 
+		// Put thread to sleep, woken up by M4 IRQ
 		chSysLock();
 		thread = chThdSelf();
 		chSchGoSleepS(THD_STATE_SUSPENDED);
 		chSysUnlock();
 	}
+}
+
+StreamBuffer* BufferExchange::get_prefill(FIFO<StreamBuffer*>* fifo) {
+	StreamBuffer* p { nullptr };
+	fifo->out(p);
+	
+	return p;
 }

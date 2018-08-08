@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -32,6 +33,7 @@
 #include <array>
 #include <memory>
 #include <iterator>
+#include <vector>
 
 namespace std {
 namespace filesystem {
@@ -231,6 +233,18 @@ space_info space(const path& p);
 } /* namespace filesystem */
 } /* namespace std */
 
+struct FATTimestamp {
+	uint16_t FAT_date;
+	uint16_t FAT_time;
+};
+
+void delete_file(const std::filesystem::path& file_path);
+void rename_file(const std::filesystem::path& file_path, const std::filesystem::path& new_name);
+FATTimestamp file_created_date(const std::filesystem::path& file_path);
+uint32_t make_new_directory(const std::filesystem::path& dir_path);
+
+std::vector<std::filesystem::path> scan_root_files(const std::filesystem::path& directory, const std::filesystem::path& extension);
+std::vector<std::filesystem::path> scan_root_directories(const std::filesystem::path& directory);
 std::filesystem::path next_filename_stem_matching_pattern(std::filesystem::path filename_stem_pattern);
 
 /* Values added to FatFs FRESULT enum, values outside the FRESULT data type */
@@ -247,6 +261,7 @@ class File {
 public:
 	using Size = uint64_t;
 	using Offset = uint64_t;
+	using Timestamp = uint32_t;
 	using Error = std::filesystem::filesystem_error;
 
 	template<typename T>
@@ -313,8 +328,10 @@ public:
 
 	Result<Size> read(void* const data, const Size bytes_to_read);
 	Result<Size> write(const void* const data, const Size bytes_to_write);
-
+	
 	Result<Offset> seek(const uint64_t Offset);
+	Timestamp created_date();
+	Size size();
 
 	template<size_t N>
 	Result<Size> write(const std::array<uint8_t, N>& data) {

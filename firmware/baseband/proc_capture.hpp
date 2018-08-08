@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2018 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -45,10 +46,10 @@ public:
 
 private:
 	// TODO: Repeated value needs to be transmitted from application side.
-	static constexpr size_t baseband_fs = 4000000;
+	size_t baseband_fs = 0;
 	static constexpr auto spectrum_rate_hz = 50.0f;
 
-	BasebandThread baseband_thread { baseband_fs, this, NORMALPRIO + 20 };
+	BasebandThread baseband_thread { baseband_fs, this, NORMALPRIO + 20, baseband::Direction::Receive };
 	RSSIThread rssi_thread { NORMALPRIO + 10 };
 
 	std::array<complex16_t, 512> dst { };
@@ -68,6 +69,7 @@ private:
 	size_t spectrum_interval_samples = 0;
 	size_t spectrum_samples = 0;
 
+	void samplerate_config(const SamplerateConfigMessage& message);
 	void capture_config(const CaptureConfigMessage& message);
 };
 

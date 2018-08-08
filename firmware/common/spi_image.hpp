@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -62,14 +63,36 @@ private:
 	char c[4];
 };
 
+constexpr image_tag_t image_tag_acars				{ 'P', 'A', 'C', 'A' };
+constexpr image_tag_t image_tag_adsb_rx				{ 'P', 'A', 'D', 'R' };
+constexpr image_tag_t image_tag_afsk_rx				{ 'P', 'A', 'F', 'R' };
 constexpr image_tag_t image_tag_ais					{ 'P', 'A', 'I', 'S' };
 constexpr image_tag_t image_tag_am_audio			{ 'P', 'A', 'M', 'A' };
 constexpr image_tag_t image_tag_capture				{ 'P', 'C', 'A', 'P' };
 constexpr image_tag_t image_tag_ert					{ 'P', 'E', 'R', 'T' };
 constexpr image_tag_t image_tag_nfm_audio			{ 'P', 'N', 'F', 'M' };
+constexpr image_tag_t image_tag_pocsag				{ 'P', 'P', 'O', 'C' };
+constexpr image_tag_t image_tag_sonde				{ 'P', 'S', 'O', 'N' };
 constexpr image_tag_t image_tag_tpms				{ 'P', 'T', 'P', 'M' };
 constexpr image_tag_t image_tag_wfm_audio			{ 'P', 'W', 'F', 'M' };
 constexpr image_tag_t image_tag_wideband_spectrum	{ 'P', 'S', 'P', 'E' };
+constexpr image_tag_t image_tag_test				{ 'P', 'T', 'S', 'T' };
+
+constexpr image_tag_t image_tag_adsb_tx				{ 'P', 'A', 'D', 'T' };
+constexpr image_tag_t image_tag_afsk				{ 'P', 'A', 'F', 'T' };
+constexpr image_tag_t image_tag_audio_tx			{ 'P', 'A', 'T', 'X' };
+constexpr image_tag_t image_tag_fsktx				{ 'P', 'F', 'S', 'K' };
+constexpr image_tag_t image_tag_jammer				{ 'P', 'J', 'A', 'M' };
+constexpr image_tag_t image_tag_mic_tx				{ 'P', 'M', 'T', 'X' };
+constexpr image_tag_t image_tag_ook					{ 'P', 'O', 'O', 'K' };
+constexpr image_tag_t image_tag_rds					{ 'P', 'R', 'D', 'S' };
+constexpr image_tag_t image_tag_replay				{ 'P', 'R', 'E', 'P' };
+constexpr image_tag_t image_tag_siggen				{ 'P', 'S', 'I', 'G' };
+constexpr image_tag_t image_tag_sstv_tx				{ 'P', 'S', 'T', 'X' };
+constexpr image_tag_t image_tag_tones				{ 'P', 'T', 'O', 'N' };
+
+constexpr image_tag_t image_tag_noop				{ 'P', 'N', 'O', 'P' };
+
 constexpr image_tag_t image_tag_hackrf				{ 'H', 'R', 'F', '1' };
 
 struct chunk_t {
@@ -98,12 +121,12 @@ constexpr region_t bootstrap {
 
 constexpr region_t images {
 	.offset = 0x10000,
-	.size = 0x30000,
+	.size = 0x70000,
 };
 
 constexpr region_t application {
-	.offset = 0x40000,
-	.size = 0x40000,
+	.offset = 0x80000,
+	.size = 0x50000,
 };
 
 } /* namespace spi_flash */

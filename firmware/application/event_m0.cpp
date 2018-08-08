@@ -22,6 +22,7 @@
 #include "event_m0.hpp"
 
 #include "portapack.hpp"
+#include "portapack_persistent_memory.hpp"
 
 #include "sd_card.hpp"
 #include "rtc_time.hpp"
@@ -91,6 +92,7 @@ private:
 static MessageHandlerMap message_map;
 Thread* EventDispatcher::thread_event_loop = nullptr;
 bool EventDispatcher::is_running = false;
+bool EventDispatcher::display_sleep = false;
 
 EventDispatcher::EventDispatcher(
 	ui::Widget* const top_widget,
@@ -130,7 +132,7 @@ void EventDispatcher::set_display_sleep(const bool sleep) {
 		// Don't turn on backlight here.
 		// Let frame sync handler turn on backlight after repaint.
 	}
-	display_sleep = sleep;
+	EventDispatcher::display_sleep = sleep;
 };
 
 eventmask_t EventDispatcher::wait() {
@@ -187,8 +189,12 @@ void EventDispatcher::dispatch(const eventmask_t events) {
 	if( events & EVT_MASK_SWITCHES ) {
 		handle_switches();
 	}
+	
+	/*if( events & EVT_MASK_LCD_FRAME_SYNC ) {
+		blink_timer();
+	}*/
 
-	if( !display_sleep ) {
+	if( !EventDispatcher::display_sleep ) {
 		if( events & EVT_MASK_LCD_FRAME_SYNC ) {
 			handle_lcd_frame_sync();
 		}
@@ -217,8 +223,18 @@ void EventDispatcher::handle_local_queue() {
 
 void EventDispatcher::handle_rtc_tick() {
 	sd_card::poll_inserted();
+	
+	portapack::poll_ext_clock();
 
 	portapack::temperature_logger.second_tick();
+	
+	uint32_t backlight_timer = portapack::persistent_memory::config_backlight_timer();
+	if (backlight_timer) {
+		if (portapack::bl_tick_counter == backlight_timer)
+			set_display_sleep(true);
+		else
+			portapack::bl_tick_counter++;
+	}
 
 	rtc_time::on_tick_second();
 }
@@ -276,7 +292,9 @@ void EventDispatcher::handle_lcd_frame_sync() {
 void EventDispatcher::handle_switches() {
 	const auto switches_state = get_switches_state();
 
-	if( display_sleep ) {
+	portapack::bl_tick_counter = 0;
+
+	if( EventDispatcher::display_sleep ) {
 		// Swallow event, wake up display.
 		if( switches_state.any() ) {
 			set_display_sleep(false);
@@ -296,6 +314,14 @@ void EventDispatcher::handle_switches() {
 }
 
 void EventDispatcher::handle_encoder() {
+	portapack::bl_tick_counter = 0;
+	
+	if( EventDispatcher::display_sleep ) {
+		// Swallow event, wake up display.
+		set_display_sleep(false);
+		return;
+	}
+	
 	const uint32_t encoder_now = get_encoder_position();
 	const int32_t delta = static_cast<int32_t>(encoder_now - encoder_last);
 	encoder_last = encoder_now;

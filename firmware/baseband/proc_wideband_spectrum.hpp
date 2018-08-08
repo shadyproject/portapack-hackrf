@@ -41,7 +41,9 @@ public:
 	void on_message(const Message* const message) override;
 
 private:
-	static constexpr size_t baseband_fs = 20000000;
+	bool configured = false;
+	
+	size_t baseband_fs = 20000000;
 
 	BasebandThread baseband_thread { baseband_fs, this, NORMALPRIO + 20 };
 	RSSIThread rssi_thread { NORMALPRIO + 10 };
@@ -50,7 +52,7 @@ private:
 
 	std::array<complex16_t, 256> spectrum { };
 
-	size_t phase = 0;
+	size_t phase = 0, trigger = 127;
 };
 
 #endif/*__PROC_WIDEBAND_SPECTRUM_H__*/

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -48,6 +49,8 @@ public:
 	void wake();
 
 	void fill_rectangle(ui::Rect r, const ui::Color c);
+	void fill_rectangle_unrolled8(ui::Rect r, const ui::Color c);
+	void draw_line(const ui::Point start, const ui::Point end, const ui::Color color);
 	void fill_circle(
 		const ui::Point center,
 		const ui::Dim radius,
@@ -56,7 +59,10 @@ public:
 	);
 
 	void draw_pixel(const ui::Point p, const ui::Color color);
-
+	void drawBMP(const ui::Point p, const uint8_t * bitmap, const bool transparency);
+	void render_line(const ui::Point p, const uint8_t count, const ui::Color* line_buffer);
+	void render_box(const ui::Point p, const ui::Size s, const ui::Color* line_buffer);
+	
 	template<size_t N>
 	void draw_pixels(
 		const ui::Rect r,
@@ -105,7 +111,7 @@ private:
 		ui::Dim height;
 		ui::Coord current_position;
 	};
-
+	
 	scroll_t scroll_state;
 
 	void draw_pixels(const ui::Rect r, const ui::Color* const colors, const size_t count);

@@ -48,19 +48,22 @@ public:
 
 	int draw_char(const Point p, const Style& style, const char c);
 
+	int draw_string(Point p, const Font& font, const Color foreground,
+		const Color background, const std::string text);
 	int draw_string(Point p, const Style& style, const std::string text);
 
 	void draw_bitmap(const Point p, const Bitmap& bitmap, const Color background, const Color foreground);
 
 	void draw_rectangle(const Rect r, const Color c);
 	void fill_rectangle(const Rect r, const Color c);
+	void fill_rectangle_unrolled8(const Rect r, const Color c);
 
 	void paint_widget_tree(Widget* const w);
 	
-private:
 	void draw_hline(Point p, int width, const Color c);
 	void draw_vline(Point p, int height, const Color c);
-
+	
+private:
 	void paint_widget(Widget* const w);
 };
 

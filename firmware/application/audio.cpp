@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -41,7 +42,7 @@ constexpr i2s::ConfigTX i2s0_config_tx_master_base_clk {
 		.mono = 0,
 		.stop = 1,
 		.reset = 0,
-		.ws_sel = 0,
+		.ws_sel = 0,			// Master
 		.ws_halfperiod = 0x0f,
 		.mute = 1,
 	},
@@ -66,7 +67,7 @@ constexpr i2s::ConfigRX i2s0_config_rx_four_wire {
 		.mono = 0,
 		.stop = 1,
 		.reset = 0,
-		.ws_sel = 1,
+		.ws_sel = 0,			// Master
 		.ws_halfperiod = 0x0f,
 	},
 	.rxrate = i2s::MCLKRate {
@@ -219,6 +220,7 @@ void init(audio::Codec* const codec) {
 
 void shutdown() {
 	audio_codec->reset();
+	input::stop();
 	output::stop();
 }
 

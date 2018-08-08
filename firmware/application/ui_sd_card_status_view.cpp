@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Jared Boone, ShareBrained Technology, Inc.
+ * Copyright (C) 2016 Furrtek
  *
  * This file is part of PortaPack.
  *
@@ -82,7 +83,7 @@ const Color color_sd_card(const sd_card::Status status) {
 
 SDCardStatusView::SDCardStatusView(
 	const Rect parent_rect
-) : Image { parent_rect, &bitmap_sd_card_unknown, detail::color_sd_card_unknown, Color::black() }
+) : Image { parent_rect, &bitmap_sd_card_unknown, detail::color_sd_card_unknown, Color::dark_grey() }
 {
 }
 
